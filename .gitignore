@@ -1,0 +1,8 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+model/phishing_model.pkl
+model/feature_columns.pkl
+.DS_Store
+

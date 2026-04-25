@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phishing Detection System</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: #0f0f0f;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'IBM Plex Mono', monospace;
+      color: #e8e8e8;
+      padding: 24px;
+    }
+    .card {
+      width: 100%;
+      max-width: 480px;
+    }
+    .label {
+      font-size: 11px;
+      color: #444;
+      letter-spacing: 3px;
+      margin-bottom: 6px;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      color: #e8e8e8;
+      letter-spacing: -0.5px;
+      margin-bottom: 32px;
+    }
+    input[type="text"] {
+      width: 100%;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      padding: 12px 14px;
+      color: #e8e8e8;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      margin-bottom: 12px;
+    }
+    input[type="text"]::placeholder { color: #333; }
+    button {
+      width: 100%;
+      padding: 11px;
+      background: #e8e8e8;
+      color: #0f0f0f;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      letter-spacing: 1.5px;
+      cursor: pointer;
+    }
+    button:hover { background: #d0d0d0; }
+    .result {
+      margin-top: 28px;
+      padding: 24px;
+      background: #1a1a1a;
+      border-radius: 8px;
+    }
+    .result.phishing   { border: 1px solid #3d1a1a; }
+    .result.legitimate { border: 1px solid #1a3d1a; }
+    .result.not_exist  { border: 1px solid #2a2a2a; }
+    .result.invalid    { border: 1px solid #2a2a2a; }
+    .result.error      { border: 1px solid #3d2a1a; }
+    .result-url {
+      font-size: 11px;
+      color: #555;
+      word-break: break-all;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+    .verdict {
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+    .verdict.phishing   { color: #e05555; }
+    .verdict.legitimate { color: #4caf50; }
+    .verdict.not_exist  { color: #888; }
+    .verdict.invalid    { color: #888; }
+    .verdict.error      { color: #d4a017; }
+    .divider { height: 1px; background: #2a2a2a; margin: 16px 0; }
+    .prob-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .prob-label {
+      font-size: 11px;
+      color: #444;
+      letter-spacing: 2px;
+    }
+    .prob-value {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .prob-bar-bg {
+      height: 3px;
+      background: #222;
+      border-radius: 2px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+    .prob-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+    }
+    .sub-message {
+      font-size: 12px;
+      color: #555;
+      margin-top: 8px;
+      line-height: 1.7;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="card">
+    <div class="label">PHISHING DETECTION</div>
+    <h1>URL Analyzer</h1>
+
+    <form method="POST">
+      <input
+        type="text"
+        name="url"
+        placeholder="paste a URL..."
+        value="{{ request.form.get('url', '') }}"
+        autofocus
+      />
+      <button type="submit">ANALYZE</button>
+    </form>
+
+    {% if result %}
+    <div class="result {{ result_type }}">
+
+      {% if result_type in ['phishing', 'legitimate'] %}
+        <div class="result-url">{{ request.form.get('url', '') }}</div>
+        <div class="verdict {{ result_type }}">{{ result }}</div>
+        {% if probability is not none %}
+        <div class="divider"></div>
+        <div class="prob-row">
+          <span class="prob-label">PHISHING PROBABILITY</span>
+          <span class="prob-value" style="color: {% if probability > 70 %}#e05555{% elif probability > 40 %}#d4a017{% else %}#4caf50{% endif %}">
+            {{ probability }}%
+          </span>
+        </div>
+        <div class="prob-bar-bg">
+          <div class="prob-bar-fill" style="
+            width: {{ probability }}%;
+            background: {% if probability > 70 %}#e05555{% elif probability > 40 %}#d4a017{% else %}#4caf50{% endif %};
+          "></div>
+        </div>
+        {% endif %}
+
+      {% elif result_type == 'not_exist' %}
+        <div class="verdict not_exist">Does Not Exist</div>
+        <div class="sub-message">{{ result }}</div>
+
+      {% elif result_type == 'invalid' %}
+        <div class="verdict invalid">Invalid Entry</div>
+        <div class="sub-message">{{ result }}</div>
+
+      {% else %}
+        <div class="verdict error">Error</div>
+        <div class="sub-message">{{ result }}</div>
+      {% endif %}
+
+    </div>
+    {% endif %}
+  </div>
+</body>
+</html>
