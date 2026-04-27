@@ -1,11 +1,13 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 import pickle
 import pandas as pd
 from urllib.parse import urlparse
+from flask_cors import CORS
 
 from feature_extraction import extract_features
 
 app = Flask(__name__)
+CORS(app)
 
 with open("model/phishing_model.pkl", "rb") as f:
     model = pickle.load(f)
@@ -40,71 +42,76 @@ def is_valid_url_format(url):
     return True
 
 
+def run_prediction(url):
+    if not url:
+        return {"status": "invalid", "message": "No URL provided"}
+
+    if not url.startswith("http://") and not url.startswith("https://"):
+        url = "https://" + url
+
+    if not is_valid_url_format(url):
+        return {"status": "invalid", "message": "Invalid entry. Please enter a valid URL like https://example.com"}
+
+    features = extract_features(url)
+    status = features.get("_status")
+
+    if status == "dns_fail":
+        return {"status": "not_exist", "message": "This website does not exist. The domain could not be resolved."}
+
+    if status == "fetch_fail":
+        return {"status": "not_exist", "message": "Website exists but the page could not be loaded."}
+
+    if status == "invalid_url":
+        return {"status": "invalid", "message": "Invalid entry. Please enter a valid URL."}
+
+    try:
+        row = {col: features.get(col, 1) for col in FEATURE_COLUMNS}
+        df = pd.DataFrame([row], columns=FEATURE_COLUMNS)
+
+        proba = model.predict_proba(df)[0]
+        classes = list(model.classes_)
+        phish_prob = proba[classes.index(-1)] if -1 in classes else proba[0]
+        probability = round(phish_prob * 100, 1)
+
+        # Threshold: below 15% = Legitimate, 15% and above = Phishing
+        if phish_prob >= 0.15:
+            return {"status": "phishing", "message": "Phishing Website", "probability": probability}
+        else:
+            return {"status": "legitimate", "message": "Legitimate Website", "probability": probability}
+
+    except Exception as e:
+        return {"status": "error", "message": f"Prediction error: {str(e)}"}
+
+
+# ── Web interface ─────────────────────────────────────────────────────────────
 @app.route("/", methods=["GET", "POST"])
 def home():
-
     result = ""
     result_type = ""
     probability = None
 
     if request.method == "POST":
-
         url = request.form.get("url", "").strip()
+        data = run_prediction(url)
+        result = data.get("message", "")
+        result_type = data.get("status", "error")
+        probability = data.get("probability", None)
 
-        if not url:
-            result = "Please enter a URL."
-            result_type = "invalid"
-            return render_template("index.html", result=result, result_type=result_type, probability=probability)
+    return render_template(
+        "index.html",
+        result=result,
+        result_type=result_type,
+        probability=probability
+    )
 
-        if not url.startswith("http://") and not url.startswith("https://"):
-            url = "https://" + url
 
-        if not is_valid_url_format(url):
-            result = "Invalid entry. Please enter a valid URL like https://example.com"
-            result_type = "invalid"
-            return render_template("index.html", result=result, result_type=result_type, probability=probability)
-
-        features = extract_features(url)
-        status = features.get("_status")
-
-        if status == "dns_fail":
-            result = "This website does not exist. The domain could not be resolved."
-            result_type = "not_exist"
-            return render_template("index.html", result=result, result_type=result_type, probability=probability)
-
-        if status == "fetch_fail":
-            result = "Website exists but the page could not be loaded."
-            result_type = "not_exist"
-            return render_template("index.html", result=result, result_type=result_type, probability=probability)
-
-        if status == "invalid_url":
-            result = "Invalid entry. Please enter a valid URL."
-            result_type = "invalid"
-            return render_template("index.html", result=result, result_type=result_type, probability=probability)
-
-        try:
-            row = {col: features.get(col, 1) for col in FEATURE_COLUMNS}
-            df = pd.DataFrame([row], columns=FEATURE_COLUMNS)
-
-            prediction = model.predict(df)[0]
-            proba = model.predict_proba(df)[0]
-
-            classes = list(model.classes_)
-            phish_prob = proba[classes.index(-1)] if -1 in classes else proba[0]
-            probability = round(phish_prob * 100, 1)
-
-            if prediction == -1:
-                result = "Phishing Website"
-                result_type = "phishing"
-            else:
-                result = "Legitimate Website"
-                result_type = "legitimate"
-
-        except Exception as e:
-            result = f"Prediction error: {str(e)}"
-            result_type = "error"
-
-    return render_template("index.html", result=result, result_type=result_type, probability=probability)
+# ── API endpoint for Chrome extension ────────────────────────────────────────
+@app.route("/api/check", methods=["POST"])
+def api_check():
+    data = request.get_json()
+    url = data.get("url", "").strip()
+    result = run_prediction(url)
+    return jsonify(result)
 
 
 if __name__ == "__main__":

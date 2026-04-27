@@ -47,53 +47,62 @@ def extract_features(url):
         return {"_status": "dns_fail"}
 
     html, final_url, redirect_count = fetch_page(url)
-    page_exists = html is not None
 
-    if not page_exists:
+    if html is None:
         return {"_status": "fetch_fail"}
 
     soup = BeautifulSoup(html, "html.parser")
     features = {}
 
+    # 1. IP address in URL
     features["having_IPhaving_IP_Address"] = (
         -1 if re.search(r'\d{1,3}(\.\d{1,3}){3}', domain) else 1
     )
 
+    # 2. URL length
     url_len = len(url)
     features["URLURL_Length"] = 1 if url_len < 54 else (0 if url_len <= 75 else -1)
 
+    # 3. Shortening service
     shorteners = ["bit.ly", "tinyurl.com", "goo.gl", "ow.ly", "t.co", "is.gd", "rb.gy"]
     features["Shortining_Service"] = -1 if any(s in full for s in shorteners) else 1
 
+    # 4. @ symbol
     features["having_At_Symbol"] = -1 if "@" in url else 1
 
+    # 5. Double slash redirect
     features["double_slash_redirecting"] = -1 if "//" in path else 1
 
+    # 6. Hyphen in domain
     features["Prefix_Suffix"] = -1 if "-" in domain else 1
 
+    # 7. Sub-domain count
     dot_count = domain.count(".")
     features["having_Sub_Domain"] = 1 if dot_count == 1 else (0 if dot_count == 2 else -1)
 
+    # 8. SSL — highest importance feature (32.6%)
     features["SSLfinal_State"] = 1 if url.startswith("https") else -1
 
+    # 9. Domain registration length
     has_digits_in_domain = bool(re.search(r'\d', domain.split(".")[0]))
     features["Domain_registeration_length"] = -1 if has_digits_in_domain else 1
 
+    # 10. Favicon
     favicon_tag = soup.find("link", rel=lambda r: r and "icon" in r)
     if favicon_tag and favicon_tag.get("href"):
         fav_href = favicon_tag["href"]
-        if fav_href.startswith("http") and domain not in fav_href:
-            features["Favicon"] = -1
-        else:
-            features["Favicon"] = 1
+        features["Favicon"] = -1 if fav_href.startswith("http") and domain not in fav_href else 1
     else:
         features["Favicon"] = 1
 
+    # 11. Port
     port = parsed.port
     features["port"] = -1 if (port and port not in [80, 443]) else 1
 
+    # 12. HTTPS token in domain name
     features["HTTPS_token"] = -1 if "https" in domain.lower() else 1
 
+    # 13. Request URL — ratio of external resources
     total_resources = 0
     external_resources = 0
     for tag in soup.find_all(["img", "script", "link"]):
@@ -108,6 +117,7 @@ def extract_features(url):
     else:
         features["Request_URL"] = 1
 
+    # 14. URL of Anchor — second highest importance (24.5%)
     anchors = soup.find_all("a", href=True)
     suspicious_anchors = 0
     for a in anchors:
@@ -122,6 +132,7 @@ def extract_features(url):
     else:
         features["URL_of_Anchor"] = 0
 
+    # 15. Links in tags
     meta_script_link = soup.find_all(["meta", "script", "link"])
     ext_tag_count = sum(
         1 for t in meta_script_link
@@ -132,6 +143,7 @@ def extract_features(url):
     tag_ratio = ext_tag_count / len(meta_script_link) if meta_script_link else 0
     features["Links_in_tags"] = 1 if tag_ratio < 0.17 else (0 if tag_ratio <= 0.81 else -1)
 
+    # 16. Server form handler
     forms = soup.find_all("form")
     sfh_suspicious = False
     for form in forms:
@@ -142,30 +154,37 @@ def extract_features(url):
             sfh_suspicious = True
     features["SFH"] = -1 if sfh_suspicious else 1
 
+    # 17. Submitting to email
     features["Submitting_to_email"] = (
         -1 if any("mailto:" in (f.get("action", "").lower()) for f in forms) else 1
     )
 
+    # 18. Abnormal URL — domain mismatch after redirect
     if final_url:
         final_domain = urlparse(final_url).netloc.replace("www.", "")
         features["Abnormal_URL"] = -1 if final_domain != domain else 1
     else:
         features["Abnormal_URL"] = 1
 
+    # 19. Redirect count
     features["Redirect"] = 0 if redirect_count == 0 else (1 if redirect_count == 1 else -1)
 
+    # 20. onMouseOver
     features["on_mouseover"] = (
         -1 if "onmouseover" in html.lower() and "window.status" in html.lower() else 1
     )
 
+    # 21. Right click disabled
     features["RightClick"] = (
         -1 if "contextmenu" in html.lower() and "return false" in html.lower() else 1
     )
 
+    # 22. Popup window
     features["popUpWidnow"] = (
         -1 if "window.open" in html.lower() and "prompt(" in html.lower() else 1
     )
 
+    # 23. iFrame
     iframes = soup.find_all("iframe")
     hidden_iframe = any(
         "display:none" in (f.get("style") or "").replace(" ", "").lower()
@@ -174,11 +193,14 @@ def extract_features(url):
     )
     features["Iframe"] = -1 if hidden_iframe else (0 if iframes else 1)
 
+    # 24. Age of domain
     suspicious_domain_pattern = bool(re.search(r'(\d{4,}|[a-z]+-[a-z]+-[a-z]+)', domain))
     features["age_of_domain"] = -1 if suspicious_domain_pattern else 1
 
+    # 25. DNS record — already passed DNS check
     features["DNSRecord"] = 1
 
+    # 26. Web traffic
     known_domains = [
         "google", "youtube", "facebook", "twitter", "instagram",
         "microsoft", "apple", "amazon", "github", "linkedin",
@@ -188,18 +210,21 @@ def extract_features(url):
     ]
     is_known = any(k in domain for k in known_domains)
     features["web_traffic"] = 1 if is_known else 0
+
+    # 27. Page rank
     features["Page_Rank"] = 1 if is_known else 0
 
-    google_indexed_signals = ["google-analytics", "googletagmanager", "gtag(", "UA-", "G-"]
-    features["Google_Index"] = (
-        1 if any(s in html for s in google_indexed_signals) else 0
-    )
+    # 28. Google index
+    google_signals = ["google-analytics", "googletagmanager", "gtag(", "UA-", "G-"]
+    features["Google_Index"] = 1 if any(s in html for s in google_signals) else 0
 
+    # 29. Links pointing to page
     internal_links = sum(1 for a in anchors if domain in (a.get("href") or ""))
     features["Links_pointing_to_page"] = (
         1 if internal_links > 2 else (0 if internal_links > 0 else -1)
     )
 
+    # 30. Statistical report
     phishing_keywords = ["phish", "malware", "spyware", "ransomware"]
     features["Statistical_report"] = (
         -1 if any(k in full for k in phishing_keywords) else 1
