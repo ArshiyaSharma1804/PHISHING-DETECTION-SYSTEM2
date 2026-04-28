@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PhishGuard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 320px;
+      background: #0f0f0f;
+      font-family: 'IBM Plex Mono', monospace;
+      color: #e8e8e8;
+      padding: 20px;
+    }
+    .label { font-size: 10px; color: #444; letter-spacing: 3px; margin-bottom: 4px; }
+    h1 { font-size: 18px; font-weight: 600; margin-bottom: 20px; }
+    .url-box {
+      font-size: 11px; color: #444; word-break: break-all;
+      background: #1a1a1a; border: 1px solid #2a2a2a;
+      border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; line-height: 1.6;
+    }
+    button {
+      width: 100%; padding: 10px; background: #e8e8e8; color: #0f0f0f;
+      border: none; border-radius: 6px; font-size: 11px; font-weight: 600;
+      font-family: inherit; letter-spacing: 1.5px; cursor: pointer; margin-bottom: 16px;
+    }
+    button:hover { background: #d0d0d0; }
+    button:disabled { background: #1a1a1a; color: #444; cursor: default; }
+    .result { padding: 16px; background: #1a1a1a; border-radius: 8px; display: none; }
+    .result.phishing   { border: 1px solid #3d1a1a; }
+    .result.legitimate { border: 1px solid #1a3d1a; }
+    .result.not_exist  { border: 1px solid #2a2a2a; }
+    .result.invalid    { border: 1px solid #2a2a2a; }
+    .result.error      { border: 1px solid #3d2a1a; }
+    .verdict { font-size: 22px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 4px; }
+    .verdict.phishing   { color: #e05555; }
+    .verdict.legitimate { color: #4caf50; }
+    .verdict.not_exist  { color: #888; }
+    .verdict.invalid    { color: #888; }
+    .verdict.error      { color: #d4a017; }
+    .divider { height: 1px; background: #2a2a2a; margin: 12px 0; }
+    .prob-row { display: flex; align-items: baseline; gap: 8px; }
+    .prob-label { font-size: 10px; color: #444; letter-spacing: 2px; }
+    .prob-value { font-size: 16px; font-weight: 600; }
+    .prob-bar-bg { height: 3px; background: #222; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+    .prob-bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+    .sub-message { font-size: 11px; color: #555; margin-top: 6px; line-height: 1.7; }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="label">PHISHING DETECTION</div>
+  <h1>PhishGuard</h1>
+  <div class="url-box" id="currentUrl">Loading...</div>
+  <button id="analyzeBtn">ANALYZE</button>
+  <div class="result" id="result">
+    <div class="verdict" id="verdict"></div>
+    <div class="sub-message" id="subMessage"></div>
+    <div class="divider" id="divider" style="display:none"></div>
+    <div class="prob-row" id="probRow" style="display:none">
+      <span class="prob-label">PHISHING PROBABILITY</span>
+      <span class="prob-value" id="probValue"></span>
+    </div>
+    <div class="prob-bar-bg" id="probBarBg" style="display:none">
+      <div class="prob-bar-fill" id="probBarFill"></div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
