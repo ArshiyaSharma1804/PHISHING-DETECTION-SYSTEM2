@@ -7,6 +7,14 @@ from bs4 import BeautifulSoup
 
 REQUEST_TIMEOUT = 6
 
+KNOWN_DOMAINS = [
+    "google", "youtube", "facebook", "twitter", "instagram",
+    "microsoft", "apple", "amazon", "github", "linkedin",
+    "wikipedia", "reddit", "netflix", "stackoverflow", "paypal",
+    "ebay", "yahoo", "bing", "dropbox", "icloud", "adobe",
+    "wordpress", "shopify", "whatsapp", "telegram"
+]
+
 
 def check_dns(domain):
     try:
@@ -31,6 +39,78 @@ def fetch_page(url):
         return None, None, 0
 
 
+def extract_url_only_features(url, parsed, domain, path, full):
+    """
+    Extracts features using URL structure only — used when page
+    cannot be fetched (e.g. site is down or blocking requests).
+    Page-level features are set to neutral (0) since we have no HTML.
+    """
+    features = {}
+
+    features["having_IPhaving_IP_Address"] = (
+        -1 if re.search(r'\d{1,3}(\.\d{1,3}){3}', domain) else 1
+    )
+
+    url_len = len(url)
+    features["URLURL_Length"] = 1 if url_len < 54 else (0 if url_len <= 75 else -1)
+
+    shorteners = ["bit.ly", "tinyurl.com", "goo.gl", "ow.ly", "t.co", "is.gd", "rb.gy"]
+    features["Shortining_Service"] = -1 if any(s in full for s in shorteners) else 1
+
+    features["having_At_Symbol"] = -1 if "@" in url else 1
+
+    features["double_slash_redirecting"] = -1 if "//" in path else 1
+
+    features["Prefix_Suffix"] = -1 if "-" in domain else 1
+
+    dot_count = domain.count(".")
+    features["having_Sub_Domain"] = 1 if dot_count == 1 else (0 if dot_count == 2 else -1)
+
+    features["SSLfinal_State"] = 1 if url.startswith("https") else -1
+
+    has_digits_in_domain = bool(re.search(r'\d', domain.split(".")[0]))
+    features["Domain_registeration_length"] = -1 if has_digits_in_domain else 1
+
+    features["Favicon"] = 1
+
+    port = parsed.port
+    features["port"] = -1 if (port and port not in [80, 443]) else 1
+
+    features["HTTPS_token"] = -1 if "https" in domain.lower() else 1
+
+    # Page content features — neutral since no HTML available
+    features["Request_URL"] = 0
+    features["URL_of_Anchor"] = 0
+    features["Links_in_tags"] = 0
+    features["SFH"] = 0
+    features["Submitting_to_email"] = 1
+    features["Abnormal_URL"] = 0
+    features["Redirect"] = 0
+    features["on_mouseover"] = 1
+    features["RightClick"] = 1
+    features["popUpWidnow"] = 1
+    features["Iframe"] = 1
+
+    suspicious_domain_pattern = bool(re.search(r'(\d{4,}|[a-z]+-[a-z]+-[a-z]+)', domain))
+    features["age_of_domain"] = -1 if suspicious_domain_pattern else 1
+
+    features["DNSRecord"] = 1
+
+    is_known = any(k in domain for k in KNOWN_DOMAINS)
+    features["web_traffic"] = 1 if is_known else 0
+    features["Page_Rank"] = 1 if is_known else 0
+    features["Google_Index"] = 1 if is_known else 0
+    features["Links_pointing_to_page"] = 0
+
+    phishing_keywords = ["phish", "malware", "spyware", "ransomware"]
+    features["Statistical_report"] = (
+        -1 if any(k in full for k in phishing_keywords) else 1
+    )
+
+    features["_status"] = "ok"
+    return features
+
+
 def extract_features(url):
     try:
         parsed = urlparse(url)
@@ -43,14 +123,19 @@ def extract_features(url):
     if not domain:
         return {"_status": "invalid_url"}
 
+    # Gate 1: DNS check — does this domain exist at all?
     if not check_dns(domain):
         return {"_status": "dns_fail"}
 
+    # Gate 2: Fetch live page
     html, final_url, redirect_count = fetch_page(url)
 
+    # If page can't be fetched, fall back to URL-only feature extraction
+    # instead of returning fetch_fail — this way we still get a classification
     if html is None:
-        return {"_status": "fetch_fail"}
+        return extract_url_only_features(url, parsed, domain, path, full)
 
+    # Full feature extraction with live page content
     soup = BeautifulSoup(html, "html.parser")
     features = {}
 
@@ -201,14 +286,7 @@ def extract_features(url):
     features["DNSRecord"] = 1
 
     # 26. Web traffic
-    known_domains = [
-        "google", "youtube", "facebook", "twitter", "instagram",
-        "microsoft", "apple", "amazon", "github", "linkedin",
-        "wikipedia", "reddit", "netflix", "stackoverflow", "paypal",
-        "ebay", "yahoo", "bing", "dropbox", "icloud", "adobe",
-        "wordpress", "shopify", "whatsapp", "telegram"
-    ]
-    is_known = any(k in domain for k in known_domains)
+    is_known = any(k in domain for k in KNOWN_DOMAINS)
     features["web_traffic"] = 1 if is_known else 0
 
     # 27. Page rank
