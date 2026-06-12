@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PhishGuard Security Check</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #09090b;
+      color: #fafafa;
+      font-family: 'IBM Plex Mono', monospace;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+      padding: 24px;
+    }
+
+    /* Background glow animations */
+    .glow-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .glow-circle {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(140px);
+      opacity: 0.15;
+      transition: background 1s ease, transform 1s ease;
+    }
+
+    .glow-1 {
+      top: -10%;
+      left: -10%;
+      width: 50%;
+      height: 50%;
+      background: #e05555; /* Default reddish glow */
+    }
+
+    .glow-2 {
+      bottom: -10%;
+      right: -10%;
+      width: 50%;
+      height: 50%;
+      background: #10b981; /* Default greenish glow */
+    }
+
+    .card {
+      position: relative;
+      z-index: 2;
+      max-width: 520px;
+      width: 100%;
+      background: rgba(15, 15, 17, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 40px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      text-align: center;
+      transition: border-color 0.5s ease;
+    }
+
+    /* State icons */
+    .icon-wrapper {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      margin: 0 auto 24px;
+      position: relative;
+    }
+
+    /* Status Specific Styling */
+    .state-scanning .icon-wrapper {
+      background: rgba(59, 130, 246, 0.1);
+      border: 2px solid #3b82f6;
+      animation: pulse 2s infinite;
+    }
+
+    .state-phishing .icon-wrapper {
+      background: rgba(224, 85, 85, 0.1);
+      border: 2px solid #e05555;
+      box-shadow: 0 0 20px rgba(224, 85, 85, 0.2);
+    }
+
+    .state-legitimate .icon-wrapper {
+      background: rgba(16, 185, 129, 0.1);
+      border: 2px solid #10b981;
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+    }
+
+    .state-error .icon-wrapper {
+      background: rgba(245, 158, 11, 0.1);
+      border: 2px solid #f59e0b;
+    }
+
+    /* Spinners & animations */
+    .spinner {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      border-top-color: #3b82f6;
+      animation: spin 1.5s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: 0.8; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* Headings */
+    .title {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    .state-scanning .title { color: #3b82f6; }
+    .state-phishing .title { color: #e05555; }
+    .state-legitimate .title { color: #10b981; }
+    .state-error .title { color: #f59e0b; }
+
+    .url-display {
+      font-size: 12px;
+      color: #71717a;
+      word-break: break-all;
+      margin-bottom: 28px;
+      line-height: 1.6;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      display: inline-block;
+      max-width: 100%;
+    }
+
+    /* Percentage Visual Box */
+    .prob-box {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 28px;
+      transition: all 0.5s ease;
+    }
+
+    .state-phishing .prob-box {
+      background: rgba(224, 85, 85, 0.03);
+      border-color: rgba(224, 85, 85, 0.15);
+    }
+
+    .state-legitimate .prob-box {
+      background: rgba(16, 185, 129, 0.03);
+      border-color: rgba(16, 185, 129, 0.15);
+    }
+
+    .prob-label {
+      font-size: 10px;
+      color: #71717a;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+
+    .prob-value {
+      font-size: 36px;
+      font-weight: 700;
+    }
+
+    .state-scanning .prob-value { color: #3b82f6; }
+    .state-phishing .prob-value { color: #e05555; }
+    .state-legitimate .prob-value { color: #10b981; }
+    .state-error .prob-value { color: #f59e0b; }
+
+    .prob-bar-bg {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 3px;
+      margin-top: 14px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .prob-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      width: 0%;
+      transition: width 1s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.5s ease;
+    }
+
+    .state-scanning .prob-bar-fill {
+      background: #3b82f6;
+      width: 50%;
+      animation: scanning-bar 1.5s infinite ease-in-out;
+    }
+
+    @keyframes scanning-bar {
+      0% { left: -30%; width: 30%; }
+      50% { left: 30%; width: 40%; }
+      100% { left: 100%; width: 30%; }
+    }
+
+    .state-phishing .prob-bar-fill { background: #e05555; }
+    .state-legitimate .prob-bar-fill { background: #10b981; }
+    .state-error .prob-bar-fill { background: #f59e0b; }
+
+    /* Descriptions */
+    .description {
+      font-size: 13px;
+      color: #a1a1aa;
+      line-height: 1.8;
+      margin-bottom: 32px;
+    }
+
+    /* Buttons */
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-transform: uppercase;
+    }
+
+    .btn-danger {
+      background: #e05555;
+      color: #fff;
+      border: none;
+    }
+
+    .btn-danger:hover {
+      background: #ef4444;
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-success {
+      background: #10b981;
+      color: #fff;
+      border: none;
+    }
+
+    .btn-success:hover {
+      background: #059669;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: #a1a1aa;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Hide items when not active */
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body class="state-scanning" id="bodyState">
+
+  <div class="glow-container">
+    <div class="glow-circle glow-1" id="glow1"></div>
+    <div class="glow-circle glow-2" id="glow2"></div>
+  </div>
+
+  <div class="card" id="card">
+    <!-- Icon Container -->
+    <div class="icon-wrapper">
+      <div class="spinner" id="spinner"></div>
+      <span id="stateIcon">⛊</span>
+    </div>
+
+    <!-- Status Title -->
+    <h1 class="title" id="title">Scanning Page...</h1>
+
+    <!-- Intercepted URL -->
+    <div>
+      <span class="url-display" id="urlDisplay">loading URL...</span>
+    </div>
+
+    <!-- Phishing probability dashboard -->
+    <div class="prob-box" id="probBox">
+      <div class="prob-label" id="probLabel">SAFETY CHECK PROGRESS</div>
+      <div class="prob-value" id="probValue">SCANNING</div>
+      <div class="prob-bar-bg">
+        <div class="prob-bar-fill" id="probBarFill"></div>
+      </div>
+    </div>
+
+    <!-- Warning / Status Info Description -->
+    <p class="description" id="description">
+      PhishGuard is analyzing the redirected link. We are scanning structural features and content for potential security threats. Please wait...
+    </p>
+
+    <!-- Interactive Buttons -->
+    <div class="btn-group">
+      <button class="btn btn-danger hidden" id="btnBlock">Block & Close Tab</button>
+      <button class="btn btn-success hidden" id="btnProceed">Proceed to Website</button>
+      <button class="btn btn-secondary hidden" id="btnGoBack">Go Back / Close</button>
+    </div>
+  </div>
+
+  <script src="warning.js"></script>
+</body>
+</html>

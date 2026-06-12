@@ -1,15 +1,21 @@
 {
   "manifest_version": 3,
   "name": "PhishGuard",
-  "version": "1.0",
-  "description": "Detects phishing websites using Machine Learning",
+  "version": "2.0",
+  "description": "Detects and blocks phishing websites automatically",
   "permissions": [
     "activeTab",
-    "scripting"
+    "tabs",
+    "scripting",
+    "storage"
   ],
   "host_permissions": [
-    "http://127.0.0.1:5050/*"
+    "http://127.0.0.1:5050/*",
+    "<all_urls>"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
