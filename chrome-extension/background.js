@@ -25,7 +25,8 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     url.startsWith("http://localhost") ||
     url.startsWith("https://localhost") ||
     url === "about:blank" ||
-    url.startsWith("about:")
+    url.startsWith("about:") ||
+    url.startsWith("https://www.youtube.com")
   ) {
     return;
   }
