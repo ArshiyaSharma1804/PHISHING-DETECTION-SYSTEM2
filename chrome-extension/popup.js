@@ -1,3 +1,6 @@
+// Configuration: Change this to your production URL when published (e.g., "https://your-app.onrender.com")
+const API_BASE_URL = "http://127.0.0.1:5050";
+
 const currentUrlBox = document.getElementById("currentUrl");
 const analyzeBtn = document.getElementById("analyzeBtn");
 const resultBox = document.getElementById("result");
@@ -93,7 +96,7 @@ analyzeBtn.addEventListener("click", async () => {
   resultBox.style.display = "none";
 
   try {
-    const response = await fetch("http://127.0.0.1:5050/api/check", {
+    const response = await fetch(`${API_BASE_URL}/api/check`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: currentUrl })
@@ -141,7 +144,7 @@ analyzeBtn.addEventListener("click", async () => {
     resultBox.className = "result error";
     verdictEl.className = "verdict error";
     verdictEl.textContent = "Error";
-    subMessageEl.textContent = "Could not connect to Flask app. Make sure it is running on port 5050.";
+    subMessageEl.textContent = "Could not connect to Flask app. Make sure the server is online.";
     dividerEl.style.display = "none";
     probRow.style.display = "none";
     probBarBg.style.display = "none";

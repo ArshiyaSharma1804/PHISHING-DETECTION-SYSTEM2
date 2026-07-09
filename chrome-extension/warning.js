@@ -1,3 +1,6 @@
+// Configuration: Change this to your production URL when published (e.g., "https://your-app.onrender.com")
+const API_BASE_URL = "http://127.0.0.1:5050";
+
 // elements
 const body = document.getElementById("bodyState");
 const stateIcon = document.getElementById("stateIcon");
@@ -30,7 +33,7 @@ if (!targetUrl) {
 // Perform scan by calling the backend Flask API
 async function performScan(url) {
   try {
-    const response = await fetch("http://127.0.0.1:5050/api/check", {
+    const response = await fetch(`${API_BASE_URL}/api/check`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: url })

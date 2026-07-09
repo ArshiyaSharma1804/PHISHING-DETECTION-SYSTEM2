@@ -1,15 +1,33 @@
+import os
+import sys
 from flask import Flask, render_template, request, jsonify
 import pickle
 import pandas as pd
 from urllib.parse import urlparse
 from flask_cors import CORS
+import sklearn
+import sklearn.ensemble
 
 from feature_extraction import extract_features
 
-app = Flask(__name__)
+def get_resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(os.path.dirname(__file__))
+    return os.path.join(base_path, relative_path)
+
+app = Flask(
+    __name__,
+    template_folder=get_resource_path("templates"),
+    static_folder=get_resource_path("static")
+)
 CORS(app)
 
-with open("model/phishing_model.pkl", "rb") as f:
+model_path = get_resource_path("model/phishing_model.pkl")
+with open(model_path, "rb") as f:
     model = pickle.load(f)
 
 FEATURE_COLUMNS = [
@@ -114,5 +132,15 @@ def api_check():
     return jsonify(result)
 
 
+def main():
+    # If running inside a PyInstaller bundle, disable debug mode (reloader hangs inside frozen binaries)
+    is_compiled = getattr(sys, 'frozen', False)
+    if is_compiled:
+        app.run(debug=False, port=5050)
+    else:
+        app.run(debug=True, port=5050)
+
+
 if __name__ == "__main__":
-    app.run(debug=True, port=5050)
+    main()
+
