@@ -24,14 +24,16 @@ jobs:
         pip install flask flask-cors pandas scikit-learn beautifulsoup4 requests numpy==1.26.4 pyinstaller
 
     - name: Create Model Directory
-      run: mkdir model
+      shell: cmd
+      run: if not exist model mkdir model
 
     - name: Train Model
+      shell: cmd
       run: python train_model.py
 
     - name: Build Executable with PyInstaller
-      run: |
-        pyinstaller --onefile --add-data "model;model" --add-data "templates;templates" --add-data "static;static" app.py
+      shell: cmd
+      run: pyinstaller --onefile --add-data "model;model" --add-data "templates;templates" --add-data "static;static" app.py
 
     - name: Upload Windows Executable Artifact
       uses: actions/upload-artifact@v4
