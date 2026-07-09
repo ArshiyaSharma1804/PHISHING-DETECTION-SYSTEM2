@@ -8,34 +8,6 @@ function getDomain(url) {
   }
 }
 
-// Helper to check if domain is trusted
-function isTrustedDomain(domain) {
-  if (!domain) return false;
-  const TRUSTED_DOMAINS = [
-    "whatsapp.com",
-    "whatsapp.net",
-    "google.com",
-    "youtube.com",
-    "facebook.com",
-    "instagram.com",
-    "twitter.com",
-    "x.com",
-    "linkedin.com",
-    "github.com",
-    "microsoft.com",
-    "apple.com",
-    "netflix.com",
-    "amazon.com",
-    "gmail.com",
-    "yahoo.com",
-    "bing.com",
-    "wikipedia.org",
-    "live.com",
-    "outlook.com"
-  ];
-  return TRUSTED_DOMAINS.some(trusted => domain === trusted || domain.endsWith("." + trusted));
-}
-
 // Listen for tab updates to intercept loading URLs
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   // Only trigger when a URL starts loading
@@ -53,7 +25,8 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     url.startsWith("http://localhost") ||
     url.startsWith("https://localhost") ||
     url === "about:blank" ||
-    url.startsWith("about:")
+    url.startsWith("about:") ||
+    url.startsWith("https://www.youtube.com")
   ) {
     return;
   }
@@ -61,12 +34,6 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   try {
     const domain = getDomain(url);
     if (!domain) return;
-
-    // Check if the domain is a trusted built-in domain
-    if (isTrustedDomain(domain)) {
-      console.log(`PhishGuard: Domain ${domain} is a trusted built-in domain. Bypassing check.`);
-      return;
-    }
 
     // Check if the domain is whitelisted
     const result = await chrome.storage.local.get({ whitelist: [] });
